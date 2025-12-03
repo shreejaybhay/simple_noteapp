@@ -1,107 +1,246 @@
-"use client"
+"use client";
 
-import React from 'react'
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { ArrowLeft, BookOpen, Save, Edit3, Eye, Trash2 } from "lucide-react"
-import Link from "next/link"
-import { format } from "date-fns"
+import React, { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, BookOpen, Save, Edit3, Eye, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import Link from "next/link";
+import { format } from "date-fns";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import Loading from "@/app/loading";
 
-// Mock data for demonstration - replace with actual data fetching
-const mockNote = {
-  id: "1",
-  title: "Morning Reflections",
-  content: `Started the day with meditation and coffee. There's something magical about those quiet morning moments before the world wakes up. The sun was just beginning to peek through the curtains, casting a warm golden glow across the room.
-
-I've been thinking a lot about gratitude lately. It's easy to get caught up in the hustle and bustle of daily life and forget to appreciate the small things. Today I'm grateful for:
-
-• The peaceful silence of early morning
-• The rich aroma of freshly brewed coffee
-• The comfortable warmth of my favorite blanket
-• The opportunity to start fresh each day
-
-I want to make more time for these reflective moments. There's something powerful about putting thoughts to paper - it helps clarify what's really important and what's just noise.`,
-  date: new Date("2024-12-03"),
-  time: "08:30",
-  createdAt: new Date("2024-12-03T08:30:00"),
-  updatedAt: new Date("2024-12-03T08:35:00")
+interface Note {
+  _id: string;
+  title: string;
+  content: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface EditNotePageProps {
-  params: {
-    id: string
-  }
+  params: Promise<{
+    id: string;
+  }>;
 }
 
 const EditNotePage = ({ params }: EditNotePageProps) => {
-  // In a real app, you'd fetch the note based on params.id
-  const note = mockNote
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [note, setNote] = useState<Note | null>(null);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [noteId, setNoteId] = useState<string | null>(null);
 
-  const [title, setTitle] = React.useState(note.title)
-  const [content, setContent] = React.useState(note.content)
+  // Unwrap params promise
+  useEffect(() => {
+    params.then(({ id }) => {
+      setNoteId(id);
+    });
+  }, [params]);
 
-  const handleSave = () => {
-    // Handle save logic here
-    console.log('Saving note:', { title, content })
-  }
+  // Fetch note data
+  const fetchNote = async (id: string) => {
+    try {
+      const response = await fetch(`/api/notes/${id}`);
 
-  const handleDelete = () => {
-    // Handle delete logic here
-    if (confirm('Are you sure you want to delete this note? This action cannot be undone.')) {
-      console.log('Deleting note:', note.id)
+      if (response.status === 404) {
+        setError("Note not found");
+        return;
+      }
+
+      if (response.status === 403) {
+        setError("You don't have permission to edit this note");
+        return;
+      }
+
+      if (!response.ok) {
+        setError("Failed to load note");
+        return;
+      }
+
+      const data = await response.json();
+      setNote(data);
+      setTitle(data.title);
+      setContent(data.content);
+    } catch (error) {
+      console.error("Error fetching note:", error);
+      setError("Failed to load note");
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Handle save
+  const handleSave = async () => {
+    if (!noteId || !title.trim() || !content.trim()) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/notes/${noteId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ title, content }),
+      });
+
+      if (response.ok) {
+        const updatedNote = await response.json();
+        setNote(updatedNote);
+        router.push(`/notes/${noteId}`);
+      } else {
+        console.error("Failed to save note");
+      }
+    } catch (error) {
+      console.error("Error saving note:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle delete
+  const handleDelete = async () => {
+    if (!noteId) return;
+
+    try {
+      const response = await fetch(`/api/notes/${noteId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        router.push("/notes");
+      } else {
+        console.error("Failed to delete note");
+      }
+    } catch (error) {
+      console.error("Error deleting note:", error);
+    }
+  };
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!session) router.push("/login");
+  }, [session, status, router]);
+
+  // Fetch note when session and noteId are available
+  useEffect(() => {
+    if (session && noteId) {
+      fetchNote(noteId);
+    }
+  }, [session, noteId]);
+
+  if (status === "loading" || isLoading) {
+    return <Loading />;
   }
+
+  if (error || !note) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">
+            {error || "Note not found"}
+          </h2>
+          <Button asChild>
+            <Link href="/notes">Back to Notes</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
+
+  const createdDate = new Date(note.createdAt);
+  const updatedDate = new Date(note.updatedAt);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+    <div className="min-h-[calc(100vh-69px)] bg-background">
+      {/* Page Actions */}
+      <div className="container mx-auto px-4 py-4 border-b">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" asChild>
+              <Link href={`/notes/${note._id}`}>
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+            </Button>
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" asChild>
-                <Link href={`/notes/${note.id}`}>
-                  <ArrowLeft className="h-5 w-5" />
-                </Link>
-              </Button>
-              <BookOpen className="h-8 w-8 text-primary" />
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-semibold">Edit Note</h1>
-                <Badge variant="secondary" className="hidden sm:inline-flex">
-                  #{note.id}
-                </Badge>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/notes/${note.id}`}>
-                  <Eye className="h-4 w-4 mr-2" />
-                  Preview
-                </Link>
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-destructive hover:text-destructive"
-                onClick={handleDelete}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </Button>
-              <Button size="sm" onClick={handleSave}>
-                <Save className="h-4 w-4 mr-2" />
-                Save
-              </Button>
+              <h2 className="text-lg font-medium">Edit Note</h2>
+              <Badge variant="secondary" className="hidden sm:inline-flex">
+                #{note._id.slice(-6)}
+              </Badge>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/notes/${note._id}`}>
+                <Eye className="h-4 w-4 mr-2" />
+                Preview
+              </Link>
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Are you sure you want to delete this note?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete
+                    your note "{note.title}" and remove it from our servers.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete Note
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button size="sm" onClick={handleSave} disabled={isSaving}>
+              <Save className="h-4 w-4 mr-2" />
+              {isSaving ? "Saving..." : "Save"}
+            </Button>
+          </div>
         </div>
-      </header>
+      </div>
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
@@ -113,18 +252,24 @@ const EditNotePage = ({ params }: EditNotePageProps) => {
                   Edit Note
                 </div>
                 <div className="text-sm text-muted-foreground font-normal">
-                  Last updated: {format(note.updatedAt, "MMM d, yyyy 'at' h:mm a")}
+                  Last updated: {format(updatedDate, "MMM d, yyyy 'at' h:mm a")}
                 </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+              <form
+                className="space-y-6"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSave();
+                }}
+              >
                 {/* Title Field */}
                 <div className="space-y-2">
                   <Label htmlFor="title">Title</Label>
-                  <Input 
-                    id="title" 
-                    type="text" 
+                  <Input
+                    id="title"
+                    type="text"
                     placeholder="Enter note title..."
                     className="text-lg"
                     value={title}
@@ -153,20 +298,23 @@ const EditNotePage = ({ params }: EditNotePageProps) => {
 
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                  <Button type="submit" size="lg" className="flex-1">
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="flex-1"
+                    disabled={isSaving}
+                  >
                     <Save className="h-4 w-4 mr-2" />
-                    Save Changes
+                    {isSaving ? "Saving Changes..." : "Save Changes"}
                   </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="lg" 
-                    className="flex-1" 
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="flex-1"
                     asChild
                   >
-                    <Link href={`/notes/${note.id}`}>
-                      Cancel
-                    </Link>
+                    <Link href={`/notes/${note._id}`}>Cancel</Link>
                   </Button>
                 </div>
               </form>
@@ -183,19 +331,25 @@ const EditNotePage = ({ params }: EditNotePageProps) => {
               <CardContent className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Note ID:</span>
-                  <Badge variant="secondary">#{note.id}</Badge>
+                  <Badge variant="secondary">#{note._id.slice(-6)}</Badge>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Created:</span>
-                  <span>{format(note.createdAt, "MMM d, yyyy")}</span>
+                  <span>{format(createdDate, "MMM d, yyyy")}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Last Updated:</span>
-                  <span>{format(note.updatedAt, "MMM d, yyyy")}</span>
+                  <span>{format(updatedDate, "MMM d, yyyy")}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Word Count:</span>
-                  <span>{content.split(/\s+/).filter(word => word.length > 0).length} words</span>
+                  <span>
+                    {
+                      content.split(/\s+/).filter((word) => word.length > 0)
+                        .length
+                    }{" "}
+                    words
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -206,33 +360,65 @@ const EditNotePage = ({ params }: EditNotePageProps) => {
                 <CardTitle className="text-lg">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start" asChild>
-                  <Link href={`/notes/${note.id}`}>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  asChild
+                >
+                  <Link href={`/notes/${note._id}`}>
                     <Eye className="h-4 w-4 mr-2" />
                     Preview Note
                   </Link>
                 </Button>
-                <Button variant="outline" className="w-full justify-start" asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  asChild
+                >
                   <Link href="/notes">
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Back to All Notes
                   </Link>
                 </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start text-destructive hover:text-destructive"
-                  onClick={handleDelete}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Note
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Note
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Are you sure you want to delete this note?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently
+                        delete your note "{note.title}" and remove it from our
+                        servers.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete Note
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardContent>
             </Card>
           </div>
         </div>
       </main>
     </div>
-  )
-}
+  );
+};
 
-export default EditNotePage
+export default EditNotePage;
