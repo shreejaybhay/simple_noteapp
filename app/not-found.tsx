@@ -1,37 +1,44 @@
-import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
-import Link from "next/link";
-import { BookOpen } from "lucide-react";
+import React from 'react'
+import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { BookOpen } from "lucide-react"
+import Link from "next/link"
 
-export default function Home() {
+const NotFound = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="absolute top-6 right-6">
         <ThemeToggle />
       </div>
-
+      
       <div className="text-center max-w-lg mx-auto px-6">
         <div className="flex items-center justify-center mb-8">
           <BookOpen className="h-16 w-16 text-primary" />
         </div>
-
-        <h1 className="text-6xl font-light text-foreground mb-4">
-          Daily Notes
+        
+        <h1 className="text-8xl font-light text-muted-foreground mb-4">
+          404
         </h1>
-
+        
+        <h2 className="text-2xl font-light text-foreground mb-4">
+          Page Not Found
+        </h2>
+        
         <p className="text-lg text-muted-foreground mb-12 leading-relaxed">
-          A simple place to capture your daily thoughts and reflections.
+          The page you're looking for doesn't exist.
         </p>
-
+        
         <div className="space-y-3">
           <Button size="lg" className="w-full" asChild>
-            <Link href="/login">Sign In</Link>
+            <Link href="/">Go Home</Link>
           </Button>
           <Button variant="ghost" size="lg" className="w-full" asChild>
-            <Link href="/register">Create Account</Link>
+            <Link href="/notes">View Notes</Link>
           </Button>
         </div>
       </div>
     </div>
-  );
+  )
 }
+
+export default NotFound
