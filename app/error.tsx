@@ -11,7 +11,7 @@ interface ErrorPageProps {
   reset: () => void
 }
 
-const ErrorPage = ({ error, reset }: ErrorPageProps) => {
+const ErrorPage = ({ reset }: ErrorPageProps) => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="absolute top-6 right-6">
@@ -32,7 +32,7 @@ const ErrorPage = ({ error, reset }: ErrorPageProps) => {
         </h2>
         
         <p className="text-lg text-muted-foreground mb-12 leading-relaxed">
-          We encountered an unexpected error. Don't worry, your notes are safe.
+          We encountered an unexpected error. Don&apos;t worry, your notes are safe.
         </p>
         
         <div className="space-y-3">

@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, PenTool } from "lucide-react";
+import { Save, PenTool } from "lucide-react";
+import { PageActions } from "@/components/page-actions";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -19,7 +20,10 @@ const NewNote = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    await saveNote();
+  };
 
+  const saveNote = async () => {
     if (!title.trim() || !content.trim()) {
       return;
     }
@@ -49,25 +53,20 @@ const NewNote = () => {
 
   return (
     <div className="min-h-[calc(100vh-69px)] bg-background">
-      {/* Page Actions */}
-      <div className="container mx-auto px-4 py-4 border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/notes">
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-            </Button>
-            <h2 className="text-lg font-medium">Create New Note</h2>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button size="sm" onClick={handleSubmit} disabled={isLoading}>
-              <Save className="h-4 w-4 mr-2" />
-              {isLoading ? "Saving..." : "Save Note"}
-            </Button>
-          </div>
-        </div>
-      </div>
+      <PageActions
+        title="Create New Note"
+        backHref="/notes"
+        backLabel="Back to Notes"
+        actions={[
+          {
+            label: isLoading ? "Saving..." : "Save Note",
+            icon: <Save className="h-4 w-4" />,
+            onClick: saveNote,
+            variant: "default",
+            disabled: isLoading,
+          },
+        ]}
+      />
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">

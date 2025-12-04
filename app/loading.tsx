@@ -3,7 +3,7 @@ import { BookOpen } from "lucide-react"
 
 const Loading = () => {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="min-h-[calc(100vh-69px)] bg-background flex items-center justify-center">
       <div className="text-center">
         <div className="flex items-center justify-center mb-6">
           <BookOpen className="h-16 w-16 text-primary animate-pulse" />

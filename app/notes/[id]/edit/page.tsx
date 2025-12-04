@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { PageActions } from "@/components/page-actions";
 import Link from "next/link";
 import { format } from "date-fns";
 import { useSession } from "next-auth/react";
@@ -179,68 +180,64 @@ const EditNotePage = ({ params }: EditNotePageProps) => {
 
   return (
     <div className="min-h-[calc(100vh-69px)] bg-background">
-      {/* Page Actions */}
-      <div className="container mx-auto px-4 py-4 border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href={`/notes/${note._id}`}>
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-            </Button>
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-medium">Edit Note</h2>
-              <Badge variant="secondary" className="hidden sm:inline-flex">
-                #{note._id.slice(-6)}
-              </Badge>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/notes/${note._id}`}>
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </Link>
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Are you sure you want to delete this note?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete
-                    your note "{note.title}" and remove it from our servers.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Delete Note
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            <Button size="sm" onClick={handleSave} disabled={isSaving}>
-              <Save className="h-4 w-4 mr-2" />
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-          </div>
-        </div>
-      </div>
+      <PageActions
+        title="Edit Note"
+        subtitle={`Last updated: ${format(updatedDate, "MMM d, yyyy 'at' h:mm a")}`}
+        badge={`#${note._id.slice(-6)}`}
+        backHref={`/notes/${note._id}`}
+        backLabel="Back to Note"
+        actions={[
+          {
+            label: "Preview",
+            icon: <Eye className="h-4 w-4" />,
+            href: `/notes/${note._id}`,
+          },
+          {
+            label: isSaving ? "Saving..." : "Save",
+            icon: <Save className="h-4 w-4" />,
+            onClick: handleSave,
+            variant: "default",
+          },
+        ]}
+        mobileActions={[
+          {
+            label: "Delete",
+            icon: <Trash2 className="h-4 w-4" />,
+            onClick: () => {
+              const deleteButton = document.querySelector('[data-delete-trigger]') as HTMLButtonElement;
+              deleteButton?.click();
+            },
+            className: "text-destructive hover:text-destructive",
+          },
+        ]}
+      />
+
+      {/* Hidden delete trigger for mobile */}
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <button data-delete-trigger className="hidden" />
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Are you sure you want to delete this note?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete
+              your note "{note.title}" and remove it from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Note
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
